@@ -10,23 +10,57 @@ url handlers
 import re, time, json, logging, hashlib, base64, asyncio
 
 from coroweb import get, post
-
 from models import User, Comment, Blog, next_id
+from config import configs
+from apis import APIValueError, APIResourceNotFoundError
 
-'''
-# Test.html
-# 因为findAll函数是coroutine修饰的，所以index函数也必须是coroutine修饰
-@get('/')
+from aiohttp import web 
+
+COOKIE_NAME = "websession"
+_COOKIE_KEY = configs.session.secret
+
+
+def user2cookie(user, max_age):
+    '''
+    Generate cookie str by user
+    '''
+    # build cookie string by: id-expores-shal
+    expires = str(int(time.time() + max_age))
+    s = '%s-%s-%s-%s' %(user.id, user.passwd, expires, _COOKIE_KEY)
+    L = [user.id, expires, hashlib.sha1(s.encode('utf-8')).hexdigest()]
+    return '-'.join(L)
+
+
 @asyncio.coroutine
-def index_test(request):
-    users = yield from User.findAll()
-    # 将查询结果返回，模版中将调用结果
-    return {
-            '__template__':'test.html',
-            'users':users
-        }
- '''   
-
+def cookie2user(cookie_str):
+    '''
+    Parse cookie and load user if cookie is valid
+    '''
+    if not cookie_str:
+        logging.info("cookie_str is null!")
+        return None
+    try:
+        L = cookie_str.split('-')
+        if len(L) != 3:
+            logging.info("cookie form is error!")
+            return None
+        uid, expires, sha1 = L
+        if int(expires) < time.time():
+            logging.info("expires is error!")
+            return None
+        user = yield from User.find(uid)
+        if user is None:
+            logging.info("user is not exist!")
+            return None
+        s = "%s-%s-%s-%s" %(uid, user.passwd, expires, _COOKIE_KEY)
+        if sha1 != hashlib.sha1(s.encode('utf-8')).hexdigest():
+            logging.info("invaild sha1!")
+            return None
+        user.passwd = "******"
+        return user
+    except Exception as e:
+        logging.exception(e)
+        return None
 
 
 @get('/')
@@ -42,3 +76,43 @@ def index(request):
         '__template__': 'blogs.html',
         'blogs': blogs
     }
+
+
+@get('/register')
+def register():
+    return {
+            '__template__': 'register.html'
+        }
+
+
+@get('/signin')
+def signin():
+    return {
+            '__template__': 'signin.html'
+        }
+
+@post('/api/authenticate')
+def authenticate(*, email, passwd):
+    if not email:
+        raise APIValueError('email', 'Invaild email.')
+    if not passwd:
+        raise APIValueError('passwd', 'Invaild passwd.')
+    users = yield from User.findAll('email=?', [email])
+    if len(users) == 0:
+        raise APIValueError('email', 'Email not exist.')
+    user = users[0]
+
+    sha1 = hashlib.sha1()
+    sha1.update(user.id.encode('utf-8'))
+    sha1.update(b':')
+    sha1.update(
+
+@get('/api/users')
+@asyncio.coroutine
+def api_get_users():
+    users = yield from User.findAll(orderBy='create_at desc')
+    for u in users:
+        u.passwd = '******'
+    return dict(users=users)
+
+

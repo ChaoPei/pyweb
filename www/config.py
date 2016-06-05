@@ -1,0 +1,67 @@
+
+# -*- coding:utf-8 -*-
+
+__author__ = 'Parle'
+
+
+# read all config file(json) and create configure
+
+import config_default
+
+class Dict(dict):
+    '''
+    Simple dict but support access as x.y style
+    '''
+
+    def __init__(self, names=(), values=(), **kw):
+        super(Dict, self).__init__(**kw)
+
+        for k, v in zip(names, values):
+            self[k] = v
+
+    def __getattr__(self, kw):
+        try:
+            return self[key]
+        except KeyError:
+            return AttributeError(r"'Dict' object has no attribute '%s' " % key)
+
+    def __setattr__(self, key, value):
+        self[key] = value
+
+
+# merge two configure file attribute
+def merge(defaults, override):
+    r = {}
+    for k,v in defaults.items():
+        if k in override:
+            if isinstance(v, dict):
+                r[k] = merge(v, override[k])
+            else:
+                r[k] = override[k]
+        else
+            r[k] = v
+    return r
+
+
+def toDict(d):
+    D = Dict()
+    for k,v in d.items():
+        D[k] = toDict(v) if isinstance(v,dict) else v
+
+    return D
+
+
+# read default configure
+configs = config_default.configs
+
+
+# read and merge override configure
+try 
+    import config_override
+    configs = merge(configs, config_override.configs)
+except ImportError:
+    pass
+
+
+# save to Dict
+configs = toDict(configs)

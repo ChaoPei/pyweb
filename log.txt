@@ -1,0 +1,23 @@
+1. Environment
+	python 3
+	pip3 install aiohttp
+	pip3 install jinja2
+	MySQL 5.x
+	pip3 install aiomysql
+
+2. Struct
+	asyncio
+	MVC/MTV:JinJia (django)
+	
+
+3. File
+	app.py: 网站运行，添加处理模块
+	coroweb.py: 封装url处理和添加处理路径
+	handlers.py: url处理函数
+	config.py: 配置文件
+	orm.py: orm映射文件
+	models.py: 封装数据库表和相应的类
+	
+	init.sql: 创建数据库
+
+	templates: 网页模版

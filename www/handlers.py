@@ -12,12 +12,32 @@ import re, time, json, logging, hashlib, base64, asyncio
 from coroweb import get, post
 from models import User, Comment, Blog, next_id
 from config import configs
-from apis import APIValueError, APIResourceNotFoundError
+from apis import APIValueError, APIResourceNotFoundError, Page
 
 from aiohttp import web 
 
 COOKIE_NAME = "websession"
 _COOKIE_KEY = configs.session.secret
+
+def check_admin(request):
+    if request.__user__ is None or not request.__user__.admin:
+        raise APIPermissionError()
+
+
+def get_page_index(page_str):
+    p = 1
+    try:
+        p = int(page_str)
+    except ValueError as e:
+        pass
+    if p < 1:
+        p = 1
+    return p
+
+
+def text2html(text):
+    lines = map(lambda s: '<p>%s</p>' % s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'), filter(lambda s: s.strip() != '', text.split('\n')))
+    return ''.join(lines)
 
 
 def user2cookie(user, max_age):
@@ -135,10 +155,26 @@ def manage_create_blog():
         'action': '/api/blogs'
     }
 
+@get('/manage/blogs')
+def manage_blogs(*, page='1'):
+    return {
+        '__template__': 'manage_blogs.html',
+        'page_index':get_page_index(page)
+    }
+
+
+
+
+
+
 
 RE_EMAIL = re.compile(r'^[a-z0-9\.\-\_]+\@[a-z0-9\-\_]+(\.[a-z0-9\-\_]+){1,4}$')
 RE_SHA1 = re.compile(r'^[0-9a-f]{40}$')
 
+
+'''
+API function
+'''
 
 @post('/api/users')
 @asyncio.coroutine
@@ -197,6 +233,17 @@ def api_get_users():
     for u in users:
         u.passwd = '******'
     return dict(users=users)
+
+@get('/api/blogs')
+@asyncio.coroutine
+def api_blogs(*, page='1'):
+    page_index = get_page_index(page)
+    num = yield from Blog.findNumber('count(id)')
+    p = Page(num, page_index)
+    if num == 0:
+        return dict(page=p, blogs=())
+    blogs = yield from Blog.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+    return dict(page=p, blogs=blogs)
 
 
 

@@ -19,7 +19,7 @@ class Dict(dict):
         for k, v in zip(names, values):
             self[k] = v
 
-    def __getattr__(self, kw):
+    def __getattr__(self, key):
         try:
             return self[key]
         except KeyError:
@@ -38,7 +38,7 @@ def merge(defaults, override):
                 r[k] = merge(v, override[k])
             else:
                 r[k] = override[k]
-        else
+        else:
             r[k] = v
     return r
 
@@ -56,7 +56,7 @@ configs = config_default.configs
 
 
 # read and merge override configure
-try 
+try: 
     import config_override
     configs = merge(configs, config_override.configs)
 except ImportError:

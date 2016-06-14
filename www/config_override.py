@@ -5,7 +5,7 @@ __author__ = 'Parle'
 # configure for override 
 
 configs = {
-    'db' = {
+    'db' : {
         'host':'219.223.197.222'
         }
     }

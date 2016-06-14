@@ -118,50 +118,12 @@ def authenticate(*, email, passwd):
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r
 
-@get('/signout')
-def signout(request):
-	referer = request.headers.get('Referer')
-	r = web.HTTPFound(referer or '/')
-	r.set_cookie(COOKIE_NAME, '-deleted-', max_age=0, httponly=True)
-	logging.info('user signed out')
-	return r
-
-_RE_EMAIL = re.compile(r'^[a-z0-9\.\-\_]+\@[a-z0-9\-\_]+(\.[a-z0-9\-\_]+){1,4}$')
-_RE_SHA1 = re.compile(r'^[0-9z-f]{40}%')
-
-
 @get('/api/users')
 @asyncio.coroutine
-def api_register_user(*, email, name, passwd):
-
-	# 检查填入的信息是否符合要求
-	if not name or not name.strip():
-		raise APIValueError('name')
-	if not email or not _RE_EMAIL.match(email):
-		raise APIValueError('email')
-	if not passwd or not _RE_SHA1.match(passwd):
-		raise APIValueError('passwd')
-
-	# 邮箱注册要求唯一
-    users = yield from User.findAll('email=?', [email])
-    if len(users) > 0:
-    	# APIError(error, data, message)
-    	raise APIError('register:failed', 'email', 'Email is already in use')
-
-    # 保存注册后的用户信息
-    uid = next_id()
-    sha1_passwd = '%s:%s' %(uid, passwd)
-    # 客户端页面计算SHA值传递给服务器
-    user = User(id = uid, name=name.strip(), email=email, passwd=hashlib.sha1(sha1_passwd))
-    yield from user.save()
-
-    # 产生注册用户的session
-    r = web.Response()
-    r.set_cookie(COOKIE_NAME, user2cookie(user, 86400), max_age=86400, httponly=True)
- 	user.passwd = '******'
- 	r.content_type = 'application/json'
- 	# 对数据进行json编码
- 	r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
- 	return r
+def api_get_users():
+    users = yield from User.findAll(orderBy='create_at desc')
+    for u in users:
+        u.passwd = '******'
+    return dict(users=users)
 
 

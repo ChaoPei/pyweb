@@ -118,6 +118,78 @@ def authenticate(*, email, passwd):
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r
 
+
+@get('/signout')
+def signout(request):
+    referer = request.headers.get('Referer')
+    r = web.HTTPFound(referer or '/')
+    r.set_cookie(COOKIE_NAME, '-*deleted*-', max_age=0, httponly=True)
+    logging.info('user signout out.')
+    return r
+
+@get('/manage/blogs/create')
+def manage_create_blog():
+    return {
+        '__template__': 'manage_blog_edit.html',
+        'id': '',
+        'action': '/api/blogs'
+    }
+
+
+RE_EMAIL = re.compile(r'^[a-z0-9\.\-\_]+\@[a-z0-9\-\_]+(\.[a-z0-9\-\_]+){1,4}$')
+RE_SHA1 = re.compile(r'^[0-9a-f]{40}$')
+
+
+@post('/api/users')
+@asyncio.coroutine
+def api_register_user(*, email, name, passwd):
+    if not name or not name.strip():
+        raise APIValueError('name')
+    if not email or not RE_EMAIL.match(email):
+        raise APIValueError('email')
+    if not passwd or not RE_SHA1.match(passwd):
+        raise APIValueError('password')
+
+    users = yield from User.findAll('email=?', [email])
+
+    if len(users) > 0:
+        raise APIError('register:faild', 'email', 'Email is already in use')
+    uid = next_id()
+    sha1_passwd = '%s:%s' %(uid, passwd)
+    user = User(id=uid, name=name.strip(), email=email, passwd=hashlib.sha1(sha1_passwd.encode('utf-8')).hexdigest(), 
+        image='http://www.gravatar.com/avatar/%s?d=mm&s=120' % hashlib.md5(email.encode('utf-8')).hexdigest())
+    yield from user.save()
+    
+    # make session cookie:
+    r = web.Response()
+    r.set_cookie(COOKIE_NAME, user2cookie(user, 86400), max_age=86400, httponly=True)
+    user.passwd = '******'
+    r.content_type = 'application/json'
+    r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
+    return r
+
+@get('/api/blogs/{id}')
+@asyncio.coroutine
+def api_get_blog(*, id):
+    blog = yield from Blog.find(id)
+    return blog
+
+
+@post('/api/blogs')
+@asyncio.coroutine
+def api_create_blog(request, *, name, summary, content):
+    check_admin(request)
+    if not name or not name.strip():
+        raise APIValueError('name', 'name cannot be empty.')
+    if not summary or not summary.strip():
+        raise APIValueError('summary', 'summary cannot be empty.')
+    if not content or not content.strip():
+        raise APIValueError('content', 'content cannot be empty.')
+    blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image, name=name.strip(), summary=summary.strip(), content=content.strip())
+    yield from blog.save()
+    return blog
+
+
 @get('/api/users')
 @asyncio.coroutine
 def api_get_users():
@@ -127,6 +199,6 @@ def api_get_users():
     return dict(users=users)
 
 
-### just for test git
+
 
 

@@ -68,7 +68,9 @@ def cookie2user(cookie_str):
         if int(expires) < time.time():
             logging.info("expires is error!")
             return None
+        
         user = yield from User.find(uid)
+        
         if user is None:
             logging.info("user is not exist!")
             return None
@@ -147,13 +149,27 @@ def signout(request):
     logging.info('user signout out.')
     return r
 
-@get('/manage/blogs/create')
-def manage_create_blog():
+
+@get('/manage/')
+def manage():
+    return 'redirect:/manage.comments'
+
+
+@get('/manage/comments')
+def manage_comments(*, page='1'):
     return {
-        '__template__': 'manage_blog_edit.html',
-        'id': '',
-        'action': '/api/blogs'
+            '__template__': 'manage_comments.html'
+            'page_index':get_page_index(page)
     }
+
+
+@get('/manage/users')
+def manage_users(*, page='1'):
+    return {
+            '__template__': 'manage_users.html'
+            'page_index':get_page_index(page)
+    }
+
 
 @get('/manage/blogs')
 def manage_blogs(*, page='1'):
@@ -163,18 +179,27 @@ def manage_blogs(*, page='1'):
     }
 
 
-
-
-
+@get('/manage/blogs/create')
+def manage_create_blog():
+    return {
+        '__template__': 'manage_blog_edit.html',
+        'id': '',
+        'action': '/api/blogs'
+    }
+    
+    
+@get('/manage/blogs/edit')
+def manage_edit_blog(*, id):
+    return {
+            '__template__': 'manage_blog_edit.html',
+            'id': id,
+            'action': '/api/blog/%s' % id
+    }
 
 
 RE_EMAIL = re.compile(r'^[a-z0-9\.\-\_]+\@[a-z0-9\-\_]+(\.[a-z0-9\-\_]+){1,4}$')
 RE_SHA1 = re.compile(r'^[0-9a-f]{40}$')
 
-
-'''
-API function
-'''
 
 @post('/api/users')
 @asyncio.coroutine
@@ -204,6 +229,18 @@ def api_register_user(*, email, name, passwd):
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r
 
+
+@get('/api/blogs')
+def api_blogs(*, page='1'):
+    page_index = get_page_index(page)
+    num = yield from Blog.findNumber('count(id)')
+    p = Page(num, page_index)
+    if num == 0:
+        return dict(page=p, blogs=())
+    blogs = yield from Blog.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+    return dict(page=p, blogs=blogs)
+
+
 @get('/api/blogs/{id}')
 @asyncio.coroutine
 def api_get_blog(*, id):
@@ -226,6 +263,39 @@ def api_create_blog(request, *, name, summary, content):
     return blog
 
 
+@post('/api/blogs/{id}')
+@asyncio.coroutine
+def api_update_blog(request, *, name, summary, content):
+    check_admin(request)
+    blog = yield from Blog.find(id)
+    if not name or not name.strip():
+        raise APIValueError('name', 'name cannot be empty.')
+    if not summary or not summary.strip():
+        raise APIValueError('summary', 'summary cannot be empty.')
+    if not content or not content.strip():
+        raise APIValueError('content', 'content cannot be empty.')
+
+    blog.name = name.strip()
+    blog.summary = summary.strip()
+    blog.content = content.strip()
+    yield from blog.update()
+    return blog
+
+
+@post('/api/blogs/{id}/delete')
+@asyncio.coroutine
+def apt_delete_blog(request, *, id):
+    check_admin(request)
+    blog = yield from Blog.find(id)
+    yield from blog.remove()
+    return dict(id=id)
+
+
+
+
+
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 @get('/api/users')
 @asyncio.coroutine
 def api_get_users():
@@ -233,19 +303,4 @@ def api_get_users():
     for u in users:
         u.passwd = '******'
     return dict(users=users)
-
-@get('/api/blogs')
-@asyncio.coroutine
-def api_blogs(*, page='1'):
-    page_index = get_page_index(page)
-    num = yield from Blog.findNumber('count(id)')
-    p = Page(num, page_index)
-    if num == 0:
-        return dict(page=p, blogs=())
-    blogs = yield from Blog.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
-    return dict(page=p, blogs=blogs)
-
-
-
-
 

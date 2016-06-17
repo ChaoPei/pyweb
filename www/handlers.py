@@ -158,15 +158,15 @@ def manage():
 @get('/manage/comments')
 def manage_comments(*, page='1'):
     return {
-            '__template__': 'manage_comments.html'
-            'page_index':get_page_index(page)
+            '__template__': 'manage_comments.html',
+            'page_index': get_page_index(page)
     }
 
 
 @get('/manage/users')
 def manage_users(*, page='1'):
     return {
-            '__template__': 'manage_users.html'
+            '__template__': 'manage_users.html',
             'page_index':get_page_index(page)
     }
 
@@ -299,7 +299,7 @@ def apt_delete_blog(request, *, id):
 @get('/api/users')
 @asyncio.coroutine
 def api_get_users():
-    users = yield from User.findAll(orderBy='create_at desc')
+    users = yield from User.findAll(orderBy='created_at desc')
     for u in users:
         u.passwd = '******'
     return dict(users=users)

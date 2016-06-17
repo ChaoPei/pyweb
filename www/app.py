@@ -21,6 +21,8 @@ import orm
 
 from coroweb import add_routes, add_static
 
+from handlers import cookie2user, COOKIE_NAME
+
 
 def init_jiaja2(app, **kw):
     logging.info('init jinja2...')
@@ -52,7 +54,7 @@ def init_jiaja2(app, **kw):
 @asyncio.coroutine
 def logger_factory(app, handler):
     @asyncio.coroutine
-    def logger(request):
+    def logger(request):        # aiohttp.web create the request automatically
         logging.info('Request: %s %s' %(request.method, request.path))
 
         # wait for handler
@@ -116,7 +118,7 @@ def response_factory(app, handler):
     @asyncio.coroutine
     def response(request):
         logging.info('Response handler: %s' %(handler.__name__))
-        r = yield from handler(request)
+        r = yield from handler(request)     # handle request and return result r
         if isinstance(r, web.StreamResponse):
             return r
         if isinstance(r, bytes):
@@ -136,6 +138,7 @@ def response_factory(app, handler):
                 resp.content_type = 'application/json;charset=utf-8'
                 return resp
             else:
+                r['__user__'] = request.__user__
                 resp = web.Response(body=app['__templating__'].get_template(template).render(**r).encode('utf-8'))
                 resp.content_type = 'text/html;charset=utf-8'
                 return resp
@@ -147,7 +150,7 @@ def response_factory(app, handler):
                 return web.Response(t, str(m))
 
         #default:
-        resp = web.Response(body=(str(r)+"index").encode('utf-8'))
+        resp = web.Response(body=str(r).encode('utf-8'))
         resp.content_type = "text/plain;charset=utf-8"
         return resp
     return response
@@ -175,7 +178,7 @@ def init(loop):
     yield from orm.create_pool(loop = loop, user='web', port=3306, password='webadmin',db='web')
 
 	# 实例化一个web Application
-    app = web.Application(loop=loop, middlewares=[logger_factory, response_factory])
+    app = web.Application(loop=loop, middlewares=[logger_factory, auth_factory, response_factory])
 
     init_jiaja2(app, filters=dict(datetime=datetime_filter))
     

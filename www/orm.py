@@ -103,7 +103,7 @@ def execute(sql, args):
         try:
             # execute类型的SQL操作返回的结果只有行号，所以不需要用DictCursor
             cur = yield from conn.cursor(aiomysql.DictCursor)
-            yield from cur.execute(sql.replace('?', '%s'), args)
+            yield from cur.execute(sql.replace('?', '%s'), args or ())
             affectedLine = cur.rowcount
             yield from cur.close()
         except BaseException as e:
@@ -354,14 +354,14 @@ class Model(dict, metaclass=ModelMetaclass):
     def update(self):
         args = list(map(self.getValue, self.__fields__))
         args.append(self.getValue(self.__primary_key__))
-        rows = yield from execute(self.__updata__, args)
+        rows = yield from execute(self.__update__, args)
         if rows != 1:
             logging.warn('failed to update by primary key: affected rows: %s' %rows)
 
     @asyncio.coroutine
     def remove(self):
         args = [self.getValue(self.__primary_key__)]
-        rows = yield from execute(self.__updata__, args)
+        rows = yield from execute(self.__delete__, args)
         if rows != 1:
             logging.warn('failed to remove by primary key: affected rows: %s' %rows)
 

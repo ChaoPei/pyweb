@@ -8,6 +8,9 @@ by parle
 * **mysql**
 * **watchdog**
 * **Vue**
+* **markdown2**
+* 引入markdown的python实现，将博客和评论嵌入markdown中
+
 
 
 ##### Reference:

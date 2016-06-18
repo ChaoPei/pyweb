@@ -115,7 +115,7 @@ def index(request):
 @get('/')
 def index(*, page='1'):
     # 获取到要展示的博客页数是第几页
-    page _index = get_page_index(page)
+    page_index = get_page_index(page)
     # 查找博客表里的条目数
     num = yield from Blog.findNumber('count(id)')
     # 通过Page类来计算当前页的相关信息
@@ -127,7 +127,7 @@ def index(*, page='1'):
 
     # 返回给浏览器
     return {
-        '__template__': 'blogs.html'
+        '__template__': 'blogs.html',
         'page': page,
         'blogs':blogs
     }
@@ -210,10 +210,10 @@ def get_blog(id):
     }
 
 
-# 管理页面
+# 默认管理页面为博客管理
 @get('/manage/')
 def manage():
-    return 'redirect:/manage.comments'
+    return 'redirect:/manage/blogs'
 
 
 # 管理评论页面
@@ -261,8 +261,6 @@ def manage_edit_blog(*, id):
             'id': id,
             'action': '/api/blog/%s' % id
     }
-
-
 
 
 '''
@@ -386,7 +384,7 @@ def api_get_users():
 
 # 通过api创建评论
 @post('/api/blogs/{id}/comments')
-@asyncio.
+@asyncio.coroutine
 def api_create_comment(id, request, *, content):
     user = request.__user__
     # 必须为登录状态下才能发表评论
@@ -404,7 +402,7 @@ def api_create_comment(id, request, *, content):
 
     # 创建一条评论
     comment = Comment(blog_id = blog.id, user_id=user.id, user_name=user.name, user_image=user.image, content=content.strip())
-    yield from comment.sava()
+    yield from comment.save()
     return comment
 
 
@@ -417,7 +415,7 @@ def api_comments(*, page='1'):
     p = Page(num, page_index)
     if num == 0:
         return dict(page=p, comments=())
-    comments = yield from Comment.findAll(orderBy='created_at desc', limit=(page.offset, page.limit))
+    comments = yield from Comment.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
     return dict(page=p, comments=comments)
 
 

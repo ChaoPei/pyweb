@@ -43,9 +43,15 @@ class APIPermissionError(APIError):
         super(APIPermissionError, self).__init__('permission:forbidden', field, message)
 
 
+
+# 页面属性
 class Page(object):
 
     def __init__(self, item_count, page_index=1, page_size=10):
+        
+        #item_count：要显示的条目数量
+        #page_index：要显示的是第几页
+        #page_size：每页的条目数量
         '''
         init Pagination by item_count, page_index and page_size
         
@@ -71,18 +77,26 @@ class Page(object):
         >>> p3.limit
         10
         '''
+
         self.item_count = item_count
         self.page_size = page_size
         self.page_count = item_count // page_size + (1 if item_count % page_size > 0 else 0)
+        
+        # 条目较少，一页足够显示
         if(item_count == 0) or (page_index > self.page_count):
             self.offset = 0;
             self.limit = 0;
             self.page_index = 1
         else:
+            # 显示传入的页数
             self.page_index = page_index
+            # 计算这个页要显示条目的offset
             self.offset = self.page_size * (page_index - 1)
+            # 计算这个页要显示条目数量
             self.limit = self.page_size
+        # 是否还有下一页
         self.has_next = self.page_index < self.page_count
+        # 是否有上一页
         self.has_previous = self.page_index > 1
 
         def __str__(self):

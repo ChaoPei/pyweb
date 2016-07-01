@@ -17,8 +17,12 @@ by parle
  * MVVM框架，更好的分离Model和View 
 * **markdown2**
  * 引入markdown的python实现，将博客和评论嵌入markdown中
+* **Nginx**
+ * web服务器、负责反向代理
 * **Supervisor**
  * 管理进程，监控服务进程
+* **Fabric**
+ * 自动化部署工具
 
 
 

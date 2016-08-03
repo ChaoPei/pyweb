@@ -1,29 +1,36 @@
 # -*- coding:utf-8-*-
 
-__author__ = 'Pei Chao'
 
-'''
-Deployment toolkit
-'''
+__author__ = 'Peic'
+
+
+''' Deployment toolkit '''
+
 
 import os, re
 from datetime import datetime
 
+
 # 导入fabric api
 from fabric.api import *
+
 
 # 服务器登录
 env.user = 'parle'
 env.sudo_user = 'root'
 env.hosts = ['219.223.197.222']
 
+
 # mysql用户名和密码
 db_user = 'web'
 db_password = 'webadmin'
 
+
 _TAR_FILE = 'dist-web.tar.gz'
 
+
 _REMOTE_TMP_TAR = '/tmp/%s' % _TAR_FILE
+
 
 _REMOTE_BASE_DIR = '/srv/web-server'
 
@@ -40,9 +47,9 @@ def _now():
 
 # 备份任务
 def backup():
-    '''
-    Dump entire database on server and backup to local
-    '''
+
+    ''' Dump entire database on server and backup to local '''
+    
     dt = _now()
     
     # 数据库文件，根据日期进行命名
@@ -58,6 +65,7 @@ def backup():
         # 删除/tmp中的备份和数据库文件
         run('rm -f %s' % f)
         run('rm -f %s.tar.gz' % f)
+
 
 
 # 打包任务，将部署在服务器上的web文件进行打包
@@ -79,6 +87,7 @@ def build():
         cmd.extend(['--exclude=\'%s\'' % ex for ex in excludes])
         cmd.extend(includes)
         local(' '.join(cmd))
+
 
 
 # 部署任务，将打包后的文件上传至服务器，解压，然后重置www目录的软链接并重启服务
